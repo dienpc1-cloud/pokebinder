@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pokémon binder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --desk: #DCD9E6; --ink: #241B30; --muted: #5E5470;
+  --cover: #3B2149; --cover-edge: #2A1734;
+  --page: #F6F5FA; --page-line: #CFCADB;
+  --pocket: #E7E4EF; --pocket-line: #B9B2C9; --ghost: #8E86A0;
+  --accent: #C8203A; --ring: #6B3FA0; --chip: #FFFFFF; --shadow: rgba(36, 18, 52, .28);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --desk: #15121C; --ink: #ECE8F4; --muted: #A69EB8;
+    --cover: #2C1838; --cover-edge: #1C0F25;
+    --page: #221D2C; --page-line: #3A3348;
+    --pocket: #2B2537; --pocket-line: #4A4259; --ghost: #7D7590;
+    --accent: #E23A52; --ring: #B48CE8; --chip: #2B2537; --shadow: rgba(0, 0, 0, .55);
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--desk); color: var(--ink);
+  font-family: "Bricolage Grotesque", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 16px; line-height: 1.45;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 24px 20px 48px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 32px; margin-bottom: 18px; }
+.title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.binder-pick {
+  font-size: clamp(1.7rem, 4.5vw, 2.9rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1;
+  border: 0; background: transparent; padding: 0 28px 0 0; cursor: pointer; max-width: 100%;
+  appearance: none; -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 12px) 55%, calc(100% - 4px) 55%; background-size: 8px 8px; background-repeat: no-repeat;
+}
+.binder-pick option { font-size: 1rem; background: var(--page); color: var(--ink); }
+.btn { border: 1px solid var(--pocket-line); background: var(--chip); border-radius: 10px; padding: 7px 12px; cursor: pointer; font-size: .9rem; }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 600; }
+.btn:disabled { opacity: .5; cursor: default; }
+.sub { margin: 6px 0 0; color: var(--muted); font-size: .95rem; }
+.tally { min-width: 220px; flex: 0 1 340px; }
+.tally-num { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
+.tally-num strong { font-size: 2rem; font-weight: 800; }
+.tally-num span { color: var(--muted); }
+.bar { height: 8px; border-radius: 999px; background: var(--pocket); border: 1px solid var(--pocket-line); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-bottom: 18px; }
+.seg { display: inline-flex; border: 1px solid var(--pocket-line); border-radius: 10px; overflow: hidden; background: var(--chip); }
+.seg button { border: 0; background: transparent; padding: 7px 12px; cursor: pointer; font-size: .9rem; }
+.seg button + button { border-left: 1px solid var(--pocket-line); }
+.seg button[aria-pressed="true"] { background: var(--cover); color: #fff; }
+.search { flex: 1 1 180px; max-width: 260px; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--pocket-line); background: var(--chip); }
+.controls .push { margin-left: auto; }
+
+.binder { background: linear-gradient(180deg, var(--cover), var(--cover-edge)); border-radius: 18px 18px 22px 22px; padding: 18px; box-shadow: 0 18px 40px var(--shadow); }
+.spread { display: grid; grid-template-columns: 1fr; position: relative; }
+.spread.two { grid-template-columns: 1fr 1fr; }
+.spread.two::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 18px; transform: translateX(-50%); pointer-events: none;
+  background: linear-gradient(90deg, rgba(0,0,0,.25), rgba(0,0,0,0) 40%, rgba(0,0,0,0) 60%, rgba(0,0,0,.25));
+}
+.page { background: var(--page); padding: 14px; display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); gap: 10px; border: 1px solid var(--page-line); align-content: start; }
+.spread.two .page:first-child { border-radius: 8px 2px 2px 8px; }
+.spread.two .page:last-child { border-radius: 2px 8px 8px 2px; }
+.spread:not(.two) .page { border-radius: 8px; }
+.page.turn { animation: turn .28s ease-out; }
+@keyframes turn { from { opacity: .35; transform: translateX(var(--dir, 12px)); } to { opacity: 1; transform: none; } }
+
+.slot { position: relative; }
+.pocket {
+  position: relative; display: block; width: 100%; aspect-ratio: 63 / 88; border-radius: 6px; padding: 0;
+  background: var(--pocket); border: 1px solid var(--pocket-line); cursor: pointer; overflow: hidden;
+}
+.pocket::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(125deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 70%, rgba(255,255,255,.12) 100%);
+}
+.pocket img { position: absolute; inset: 4%; width: 92%; height: 92%; object-fit: contain; }
+.pocket.missing img { filter: grayscale(1); opacity: .28; }
+.pocket.blank { opacity: .5; }
+.plus { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.6rem; color: var(--ghost); }
+.noimg {
+  position: absolute; inset: 7%; border: 1.5px dashed var(--pocket-line); border-radius: 5px; display: flex; flex-direction: column;
+  justify-content: center; align-items: center; text-align: center; padding: 6px; gap: 2px; color: var(--ghost);
+  font-size: clamp(.6rem, 1.1vw, .82rem); font-weight: 600; line-height: 1.15;
+}
+.pocket.owned .noimg { border-style: solid; color: var(--ink); background: var(--chip); }
+.noimg small { font-weight: 400; font-size: .85em; }
+.tick {
+  position: absolute; left: 6px; bottom: 6px; z-index: 1; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 800;
+}
+.pocket.flash img { animation: slidein .25s ease-out; }
+@keyframes slidein { from { transform: translateY(14%); opacity: 0; } to { transform: none; opacity: 1; } }
+.more {
+  position: absolute; top: 4px; right: 4px; z-index: 2; border: 0; border-radius: 6px; padding: 2px 7px;
+  background: rgba(20,10,30,.72); color: #fff; font-size: .72rem; cursor: pointer; opacity: 0;
+}
+.slot:hover .more, .slot:focus-within .more { opacity: 1; }
+@media (hover: none) { .more { opacity: 1; } }
+
+.nav { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; color: #EDE6F5; font-variant-numeric: tabular-nums; }
+.nav button { border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: #fff; border-radius: 10px; padding: 7px 16px; cursor: pointer; }
+.nav button:disabled { opacity: .35; cursor: default; }
+.empty { background: var(--page); border-radius: 8px; padding: 48px 20px; text-align: center; color: var(--muted); }
+.empty h2 { margin: 0 0 6px; color: var(--ink); font-size: 1.4rem; }
+.empty p { margin: 0 auto 16px; max-width: 46ch; }
+.foot { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--muted); font-size: .85rem; }
+.foot a { color: inherit; }
+
+dialog { border: 1px solid var(--pocket-line); border-radius: 14px; padding: 20px; background: var(--page); color: var(--ink); width: min(440px, 94vw); }
+dialog.wide { width: min(980px, 96vw); max-height: 90vh; }
+dialog::backdrop { background: rgba(20, 10, 30, .6); }
+dialog h2 { margin: 0 0 12px; font-size: 1.3rem; }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+.dlg-head h2 { margin: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field label { font-size: .85rem; color: var(--muted); }
+.field input, .field select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--pocket-line); background: var(--chip); }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+.actions .danger { margin-right: auto; color: var(--accent); border-color: var(--accent); background: transparent; }
+
+.tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.tabs button { border: 1px solid var(--pocket-line); background: var(--chip); border-radius: 999px; padding: 5px 14px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--cover); color: #fff; border-color: var(--cover); }
+.find { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.find input, .find select { flex: 1 1 220px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--pocket-line); background: var(--chip); }
+.results { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; overflow-y: auto; max-height: 56vh; padding: 2px; }
+.result { border: 1px solid var(--pocket-line); background: var(--chip); border-radius: 8px; padding: 6px; cursor: pointer; text-align: left; position: relative; }
+.result img { width: 100%; aspect-ratio: 63 / 88; object-fit: contain; display: block; }
+.result .r-name { font-size: .78rem; font-weight: 600; margin-top: 4px; line-height: 1.2; }
+.result .r-id { font-size: .7rem; color: var(--muted); }
+.result.added::after { content: "Added"; position: absolute; top: 8px; right: 8px; background: var(--accent); color: #fff; font-size: .7rem; padding: 1px 6px; border-radius: 4px; }
+.status { color: var(--muted); font-size: .9rem; margin: 6px 0 10px; min-height: 1.3em; }
+.setinfo { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
+.setinfo img { max-height: 48px; max-width: 160px; object-fit: contain; }
+
+.detail { display: grid; grid-template-columns: minmax(0, 240px) 1fr; gap: 18px; }
+.detail img { width: 100%; border-radius: 10px; }
+.detail dl { margin: 0 0 12px; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: .92rem; }
+.detail dt { color: var(--muted); }
+.detail dd { margin: 0; }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 560px) {
+  .wrap { padding: 16px 12px 32px; }
+  .binder { padding: 10px; border-radius: 14px; }
+  .page { padding: 8px; gap: 6px; }
+  .detail { grid-template-columns: 1fr; }
+  .detail img { max-width: 220px; }
+}
+@media (prefers-reduced-motion: reduce) { .page.turn, .pocket.flash img { animation: none; } .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="title-row">
+        <select class="binder-pick" id="binderPick" aria-label="Choose a binder"></select>
+        <button class="btn" id="newBinderBtn">New binder</button>
+        <button class="btn" id="settingsBtn">Binder settings</button>
+      </div>
+      <p class="sub">Tap a card to mark it as collected. Tap an empty pocket to add cards.</p>
+    </div>
+    <div class="tally" aria-live="polite">
+      <div class="tally-num"><strong id="have">0</strong><span id="of">of 0 collected</span></div>
+      <div class="bar"><i id="barFill"></i></div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Show">
+      <button data-show="all" aria-pressed="true">All</button>
+      <button data-show="have" aria-pressed="false">Have</button>
+      <button data-show="need" aria-pressed="false">Need</button>
+    </div>
+    <input class="search" id="search" type="search" placeholder="Search this binder" aria-label="Search this binder">
+    <button class="btn primary push" id="addBtn">Add cards</button>
+  </div>
+
+  <section class="binder" aria-label="Binder pages">
+    <div class="spread" id="spread"></div>
+    <div class="nav" id="nav">
+      <button id="prev">Previous</button>
+      <span id="pageInfo"></span>
+      <button id="next">Next</button>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>Saved in this browser.</span>
+    <button class="btn" id="exportBtn">Download backup</button>
+    <button class="btn" id="importBtn">Restore backup</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+    <span>Card data and images from <a href="https://tcgdex.dev" target="_blank" rel="noopener">TCGdex</a>.</span>
+  </div>
+</div>
+
+<!-- Add cards -->
+<dialog id="addDlg" class="wide">
+  <div class="dlg-head">
+    <h2>Add cards</h2>
+    <button class="btn" id="addClose">Done</button>
+  </div>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="search">Search cards</button>
+    <button role="tab" aria-selected="false" data-tab="set">Add a whole set</button>
+  </div>
+  <div id="tabSearch">
+    <form class="find" id="findForm">
+      <input id="findInput" type="search" placeholder="Pokémon or card name, like Charizard" aria-label="Card name">
+      <button class="btn primary" type="submit">Search</button>
+    </form>
+    <div class="status" id="findStatus">Search by name, then tap a card to add it to this binder.</div>
+    <div class="results" id="findResults"></div>
+    <div class="actions"><button class="btn" id="findMore" hidden>Show more results</button></div>
+  </div>
+  <div id="tabSet" hidden>
+    <div class="find">
+      <input id="setFilter" type="search" placeholder="Filter sets, like 151 or Base" aria-label="Filter sets">
+      <select id="setSelect" aria-label="Set"></select>
+    </div>
+    <div class="status" id="setStatus"></div>
+    <div class="setinfo" id="setInfo" hidden>
+      <img id="setLogo" alt="">
+      <span id="setCount"></span>
+      <button class="btn primary" id="setAddAll">Add all cards</button>
+    </div>
+    <div class="results" id="setResults"></div>
+  </div>
+</dialog>
+
+<!-- Card detail -->
+<dialog id="cardDlg">
+  <div class="detail">
+    <img id="dImg" alt="">
+    <div>
+      <h2 id="dName"></h2>
+      <dl id="dList"></dl>
+      <div class="stack">
+        <button class="btn primary" id="dToggle"></button>
+        <div style="display:flex; gap:8px">
+          <button class="btn" id="dEarlier" style="flex:1">Move back</button>
+          <button class="btn" id="dLater" style="flex:1">Move forward</button>
+        </div>
+        <button class="btn" id="dRemove" style="color:var(--accent); border-color:var(--accent); background:transparent">Remove from binder</button>
+        <button class="btn" id="dClose">Close</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- Binder settings -->
+<dialog id="binderDlg">
+  <form method="dialog" id="binderForm">
+    <h2 id="binderDlgTitle">New binder</h2>
+    <div class="field"><label for="bName">Binder name</label><input id="bName" required placeholder="My Charizard collection"></div>
+    <div class="field">
+      <label for="bSize">Pockets per page</label>
+      <select id="bSize">
+        <option value="9">9 pockets (3 × 3)</option>
+        <option value="12">12 pockets (4 × 3)</option>
+        <option value="4">4 pockets (2 × 2)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="bLang">Card language</label>
+      <select id="bLang">
+        <option value="en">English</option>
+        <option value="ja">Japanese</option>
+        <option value="nl">Dutch</option>
+        <option value="de">German</option>
+        <option value="fr">French</option>
+        <option value="es">Spanish</option>
+        <option value="it">Italian</option>
+        <option value="pt">Portuguese</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn danger" id="deleteBinder" hidden>Delete binder</button>
+      <button type="button" class="btn" id="binderCancel">Cancel</button>
+      <button type="submit" class="btn primary" id="binderSave">Create binder</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+
+  var API = "https://api.tcgdex.net/v2/";
+  var LS_KEY = "pkmn-binder-v3";
+
+  // ---------- helpers ----------
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function uid() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4); }
+  function img(base, quality) { return base ? base + "/" + (quality || "low") + ".webp" : null; }
+  var cache = {};
+  function api(path) {
+    if (cache[path]) return cache[path];
+    var p = fetch(API + path).then(function (r) {
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+    cache[path] = p;
+    p.catch(function () { delete cache[path]; });
+    return p;
+  }
+
+  // ---------- state ----------
+  var state, ui = { show: "all", q: "", page: 0, two: false, flash: null };
+  function load() {
+    try { var s = JSON.parse(localStorage.getItem(LS_KEY)); if (s && Array.isArray(s.binders) && s.binders.length) return s; } catch (e) {}
+    var b = { id: uid(), name: "My binder", size: 9, lang: "en", cards: [] };
+    return { binders: [b], current: b.id };
+  }
+  function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) { alert("Your browser storage is full, so this change wasn’t saved. Download a backup to keep it."); } }
+  function cur() { return state.binders.find(function (b) { return b.id === state.current; }) || state.binders[0]; }
+  function lang() { return cur().lang || "en"; }
+
+  // ---------- binder view ----------
+  var spreadEl = $("spread");
+  function geometry(b) { var s = b.size || 9; return { per: s, cols: s === 12 ? 4 : s === 4 ? 2 : 3 }; }
+  function filtering() { return ui.show !== "all" || ui.q.trim() !== ""; }
+  function visibleCards(b) {
+    var q = ui.q.trim().toLowerCase();
+    return b.cards.filter(function (c) {
+      if (ui.show === "have" && !c.owned) return false;
+      if (ui.show === "need" && c.owned) return false;
+      if (q && [c.name, c.set, c.num, c.rarity].join(" ").toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  function slotFor(c) {
+    var slot = el("div", "slot");
+    var p = el("button", "pocket " + (c.owned ? "owned" : "missing") + (ui.flash === c.id ? " flash" : ""));
+    p.type = "button"; p.dataset.toggle = c.id;
+    p.setAttribute("aria-pressed", c.owned ? "true" : "false");
+    p.setAttribute("aria-label", c.name + (c.set ? ", " + c.set : "") + (c.num ? " " + c.num : "") + (c.owned ? ", collected" : ", not collected"));
+    if (c.image) {
+      var im = el("img"); im.src = img(c.image, "low"); im.alt = ""; im.loading = "lazy";
+      im.onerror = function () { im.remove(); p.insertBefore(noImg(c), p.firstChild); };
+      p.appendChild(im);
+    } else p.appendChild(noImg(c));
+    if (c.owned) p.appendChild(el("span", "tick", "✓"));
+    slot.appendChild(p);
+    var m = el("button", "more", "Details"); m.type = "button"; m.dataset.detail = c.id;
+    m.setAttribute("aria-label", "Details for " + c.name);
+    slot.appendChild(m);
+    return slot;
+  }
+  function noImg(c) {
+    var d = el("div", "noimg");
+    d.appendChild(document.createTextNode(c.name));
+    var meta = [c.set, c.num].filter(Boolean).join(" ");
+    if (meta) d.appendChild(el("small", null, meta));
+    return d;
+  }
+  function blankSlot() {
+    var slot = el("div", "slot");
+    var p = el("button", "pocket blank"); p.type = "button"; p.dataset.add = "1";
+    p.setAttribute("aria-label", "Add cards");
+    p.appendChild(el("span", "plus", "+"));
+    slot.appendChild(p);
+    return slot;
+  }
+
+  function renderPicker() {
+    var pick = $("binderPick"); pick.innerHTML = "";
+    state.binders.forEach(function (b) { var o = el("option", null, b.name); o.value = b.id; pick.appendChild(o); });
+    pick.value = state.current;
+  }
+
+  function render(opts) {
+    opts = opts || {};
+    var b = cur(), g = geometry(b), list = visibleCards(b);
+    var pps = ui.two ? 2 : 1, perSpread = g.per * pps;
+    var slots = filtering() ? list.length : list.length + 1;
+    var spreads = Math.max(1, Math.ceil(slots / perSpread));
+    ui.page = Math.min(Math.max(ui.page, 0), spreads - 1);
+    spreadEl.innerHTML = "";
+    spreadEl.className = "spread" + (ui.two ? " two" : "");
+    $("nav").hidden = false;
+
+    if (!b.cards.length || !list.length) {
+      var em = el("div", "empty");
+      if (!b.cards.length) {
+        em.appendChild(el("h2", null, "This binder is empty"));
+        em.appendChild(el("p", null, "Search for cards by name, or add a whole set to tick off."));
+        var a = el("button", "btn primary", "Add cards"); a.type = "button"; a.dataset.add = "1"; em.appendChild(a);
+      } else {
+        em.appendChild(el("p", null, ui.show === "have" ? "No collected cards match yet." : "No cards match. Clear the search or pick another filter."));
+      }
+      spreadEl.className = "spread"; spreadEl.appendChild(em); $("nav").hidden = true;
+    } else {
+      var start = ui.page * perSpread;
+      for (var p = 0; p < pps; p++) {
+        var page = el("div", "page" + (opts.dir ? " turn" : ""));
+        page.style.setProperty("--cols", g.cols);
+        if (opts.dir) page.style.setProperty("--dir", (opts.dir > 0 ? 14 : -14) + "px");
+        for (var i = 0; i < g.per; i++) {
+          var c = list[start + p * g.per + i];
+          if (c) page.appendChild(slotFor(c));
+          else if (!filtering()) page.appendChild(blankSlot());
+          else { var d = el("div", "pocket blank"); d.setAttribute("aria-hidden", "true"); page.appendChild(d); }
+        }
+        spreadEl.appendChild(page);
+      }
+      var total = Math.max(1, Math.ceil(slots / g.per));
+      var first = ui.page * pps + 1, last = Math.min(total, first + pps - 1);
+      $("pageInfo").textContent = (first === last ? "Page " + first : "Pages " + first + "–" + last) + " of " + total;
+      $("prev").disabled = ui.page === 0;
+      $("next").disabled = ui.page >= spreads - 1;
+    }
+    var have = b.cards.filter(function (c) { return c.owned; }).length;
+    $("have").textContent = have;
+    $("of").textContent = "of " + b.cards.length + " collected";
+    $("barFill").style.width = (b.cards.length ? have / b.cards.length * 100 : 0) + "%";
+    ui.flash = null;
+  }
+
+  function jumpTo(id) {
+    var b = cur(), g = geometry(b);
+    var idx = visibleCards(b).findIndex(function (c) { return c.id === id; });
+    if (idx >= 0) ui.page = Math.floor(idx / (g.per * (ui.two ? 2 : 1)));
+  }
+  function turn(d) { if ($(d > 0 ? "next" : "prev").disabled) return; ui.page += d; render({ dir: d }); }
+
+  spreadEl.addEventListener("click", function (e) {
+    var t;
+    if ((t = e.target.closest("[data-detail]"))) { openDetail(t.dataset.detail); return; }
+    if (e.target.closest("[data-add]")) { openAdd(); return; }
+    if ((t = e.target.closest("[data-toggle]"))) {
+      var c = cur().cards.find(function (x) { return x.id === t.dataset.toggle; });
+      if (!c) return;
+      c.owned = !c.owned; if (c.owned) ui.flash = c.id;
+      save(); render();
+      var again = spreadEl.querySelector('[data-toggle="' + CSS.escape(c.id) + '"]'); if (again) again.focus();
+    }
+  });
+  $("prev").onclick = function () { turn(-1); };
+  $("next").onclick = function () { turn(1); };
+  document.addEventListener("keydown", function (e) {
+    if (e.target.matches("input, select, textarea") || document.querySelector("dialog[open]")) return;
+    if (e.key === "ArrowRight") turn(1);
+    if (e.key === "ArrowLeft") turn(-1);
+  });
+  document.querySelectorAll("[data-show]").forEach(function (b) {
+    b.onclick = function () {
+      ui.show = b.dataset.show; ui.page = 0;
+      document.querySelectorAll("[data-show]").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      render();
+    };
+  });
+  $("search").oninput = function (e) { ui.q = e.target.value; ui.page = 0; render(); };
+  $("binderPick").onchange = function (e) { state.current = e.target.value; ui.page = 0; save(); render(); resetAdd(); };
+
+  var mq = window.matchMedia("(min-width: 900px)");
+  function applyWidth() {
+    var g = geometry(cur()), firstIdx = ui.page * g.per * (ui.two ? 2 : 1);
+    ui.two = mq.matches; ui.page = Math.floor(firstIdx / (g.per * (ui.two ? 2 : 1))); render();
+  }
+  if (mq.addEventListener) mq.addEventListener("change", applyWidth); else mq.addListener(applyWidth);
+
+  // ---------- adding cards ----------
+  var addDlg = $("addDlg");
+  function inBinder(apiId) { return cur().cards.some(function (c) { return c.apiId === apiId; }); }
+  function fromBrief(brief, setName) {
+    return { id: uid(), apiId: brief.id, name: brief.name, num: brief.localId || "", set: setName || "",
+             image: brief.image || null, rarity: "", hp: null, owned: false };
+  }
+  // fill in set name, rarity and HP in the background
+  function enrich(card) {
+    api(lang() + "/cards/" + encodeURIComponent(card.apiId)).then(function (d) {
+      if (!d) return;
+      var c = cur().cards.find(function (x) { return x.id === card.id; }) ||
+              state.binders.reduce(function (f, b) { return f || b.cards.find(function (x) { return x.id === card.id; }); }, null);
+      if (!c) return;
+      c.set = (d.set && d.set.name) || c.set; c.rarity = d.rarity || ""; c.hp = d.hp || null;
+      if (!c.image && d.image) c.image = d.image;
+      save(); render();
+    }).catch(function () {});
+  }
+  function resultTile(brief, onAdd) {
+    var b = el("button", "result" + (inBinder(brief.id) ? " added" : "")); b.type = "button";
+    if (brief.image) { var im = el("img"); im.src = img(brief.image, "low"); im.alt = ""; im.loading = "lazy"; b.appendChild(im); }
+    else { var ph = el("div", "noimg"); ph.style.position = "static"; ph.style.aspectRatio = "63 / 88"; ph.textContent = "No image yet"; b.appendChild(ph); }
+    b.appendChild(el("div", "r-name", brief.name));
+    b.appendChild(el("div", "r-id", brief.id));
+    b.setAttribute("aria-label", "Add " + brief.name + " (" + brief.id + ")");
+    b.onclick = function () { onAdd(brief); b.classList.add("added"); };
+    return b;
+  }
+  function addBrief(brief, setName) {
+    var card = fromBrief(brief, setName);
+    cur().cards.push(card); save(); render();
+    if (!setName) enrich(card);
+  }
+
+  // search tab
+  var find = { q: "", page: 1, per: 60 };
+  async function runSearch(more) {
+    var status = $("findStatus"), box = $("findResults");
+    if (!more) { find.page = 1; box.innerHTML = ""; } else find.page++;
+    if (!find.q) { status.textContent = "Type a name to search."; return; }
+    status.textContent = "Searching…"; $("findMore").hidden = true;
+    try {
+      var list = await api(lang() + "/cards?name=" + encodeURIComponent(find.q) +
+        "&pagination:page=" + find.page + "&pagination:itemsPerPage=" + find.per);
+      list = list || [];
+      list.forEach(function (c) { box.appendChild(resultTile(c, function (b) { addBrief(b); })); });
+      var shown = box.children.length;
+      status.textContent = shown ? shown + " cards found. Tap a card to add it." : "No cards found for “" + find.q + "”. Check the spelling, or try a shorter name.";
+      $("findMore").hidden = list.length < find.per;
+    } catch (err) {
+      status.textContent = "Couldn’t reach TCGdex. Check your internet connection and search again.";
+    }
+  }
+  $("findForm").onsubmit = function (e) { e.preventDefault(); find.q = $("findInput").value.trim(); runSearch(false); };
+  $("findMore").onclick = function () { runSearch(true); };
+
+  // set tab
+  var sets = null, setLang = null, chosenSet = null;
+  async function loadSets() {
+    if (sets && setLang === lang()) return fillSetSelect();
+    $("setStatus").textContent = "Loading sets…";
+    try {
+      sets = (await api(lang() + "/sets")) || []; setLang = lang();
+      sets = sets.slice().reverse(); // newest first
+      $("setStatus").textContent = "";
+      fillSetSelect();
+    } catch (err) { $("setStatus").textContent = "Couldn’t load the list of sets. Check your internet connection and reopen this tab."; }
+  }
+  function fillSetSelect() {
+    var f = $("setFilter").value.trim().toLowerCase(), sel = $("setSelect");
+    sel.innerHTML = "";
+    var first = el("option", null, "Choose a set"); first.value = ""; sel.appendChild(first);
+    sets.filter(function (s) { return !f || (s.name + " " + s.id).toLowerCase().indexOf(f) !== -1; }).forEach(function (s) {
+      var o = el("option", null, s.name + " (" + (s.cardCount ? s.cardCount.total : "?") + ")"); o.value = s.id; sel.appendChild(o);
+    });
+  }
+  $("setFilter").oninput = function () { if (sets) fillSetSelect(); };
+  $("setSelect").onchange = async function (e) {
+    var id = e.target.value, box = $("setResults");
+    box.innerHTML = ""; $("setInfo").hidden = true; chosenSet = null;
+    if (!id) return;
+    $("setStatus").textContent = "Loading cards…";
+    try {
+      var s = await api(lang() + "/sets/" + encodeURIComponent(id));
+      if (!s) { $("setStatus").textContent = "That set wasn’t found."; return; }
+      chosenSet = s;
+      $("setStatus").textContent = "";
+      $("setInfo").hidden = false;
+      if (s.logo) { $("setLogo").src = s.logo + ".webp"; $("setLogo").hidden = false; } else $("setLogo").hidden = true;
+      $("setCount").textContent = (s.cards || []).length + " cards in " + s.name;
+      (s.cards || []).forEach(function (c) { box.appendChild(resultTile(c, function (b) { addBrief(b, s.name); })); });
+    } catch (err) { $("setStatus").textContent = "Couldn’t load that set. Check your internet connection and pick it again."; }
+  };
+  $("setAddAll").onclick = function () {
+    if (!chosenSet) return;
+    var added = 0;
+    (chosenSet.cards || []).forEach(function (c) { if (!inBinder(c.id)) { cur().cards.push(fromBrief(c, chosenSet.name)); added++; } });
+    save(); render();
+    $("setResults").querySelectorAll(".result").forEach(function (r) { r.classList.add("added"); });
+    $("setStatus").textContent = added ? "Added " + added + " cards to “" + cur().name + "”." : "Every card from this set is already in the binder.";
+  };
+
+  function showTab(name) {
+    document.querySelectorAll("[data-tab]").forEach(function (t) { t.setAttribute("aria-selected", t.dataset.tab === name ? "true" : "false"); });
+    $("tabSearch").hidden = name !== "search"; $("tabSet").hidden = name !== "set";
+    if (name === "set") loadSets(); else $("findInput").focus();
+  }
+  document.querySelectorAll("[data-tab]").forEach(function (t) { t.onclick = function () { showTab(t.dataset.tab); }; });
+  function resetAdd() { $("findResults").innerHTML = ""; $("setResults").innerHTML = ""; $("setInfo").hidden = true; $("setSelect").value = ""; }
+  function openAdd() {
+    addDlg.showModal();
+    // refresh "Added" marks for the current binder
+    addDlg.querySelectorAll(".result").forEach(function (r) {
+      var id = r.querySelector(".r-id"); if (id) r.classList.toggle("added", inBinder(id.textContent));
+    });
+    if (!$("tabSearch").hidden) $("findInput").focus();
+  }
+  $("addBtn").onclick = openAdd;
+  $("addClose").onclick = function () { addDlg.close(); };
+
+  // ---------- card detail ----------
+  var cardDlg = $("cardDlg"), detailId = null;
+  function openDetail(id) {
+    var c = cur().cards.find(function (x) { return x.id === id; }); if (!c) return;
+    detailId = id;
+    $("dImg").hidden = !c.image; if (c.image) { $("dImg").src = img(c.image, "high"); $("dImg").alt = c.name; }
+    $("dName").textContent = c.name;
+    var dl = $("dList"); dl.innerHTML = "";
+    [["Set", c.set], ["Number", c.num], ["Rarity", c.rarity], ["HP", c.hp], ["TCGdex id", c.apiId]].forEach(function (r) {
+      if (!r[1]) return; dl.appendChild(el("dt", null, r[0])); dl.appendChild(el("dd", null, String(r[1])));
+    });
+    $("dToggle").textContent = c.owned ? "Mark as missing" : "Mark as collected";
+    cardDlg.showModal();
+  }
+  function detailCard() { return cur().cards.find(function (x) { return x.id === detailId; }); }
+  $("dToggle").onclick = function () { var c = detailCard(); if (!c) return; c.owned = !c.owned; save(); render(); openDetail(c.id); cardDlg.close(); cardDlg.showModal(); };
+  $("dRemove").onclick = function () { var b = cur(); b.cards = b.cards.filter(function (c) { return c.id !== detailId; }); save(); cardDlg.close(); render(); };
+  function move(d) {
+    var b = cur(), i = b.cards.findIndex(function (c) { return c.id === detailId; }), j = i + d;
+    if (i < 0 || j < 0 || j >= b.cards.length) return;
+    var t = b.cards[i]; b.cards[i] = b.cards[j]; b.cards[j] = t; save(); jumpTo(detailId); render();
+  }
+  $("dEarlier").onclick = function () { move(-1); };
+  $("dLater").onclick = function () { move(1); };
+  $("dClose").onclick = function () { cardDlg.close(); };
+
+  // ---------- binder settings ----------
+  var binderDlg = $("binderDlg"), binderMode = "new";
+  function openBinder(mode) {
+    binderMode = mode; var b = cur();
+    $("binderDlgTitle").textContent = mode === "new" ? "New binder" : "Binder settings";
+    $("binderSave").textContent = mode === "new" ? "Create binder" : "Save settings";
+    $("deleteBinder").hidden = mode === "new" || state.binders.length < 2;
+    $("bName").value = mode === "new" ? "" : b.name;
+    $("bSize").value = String(mode === "new" ? 9 : b.size || 9);
+    $("bLang").value = mode === "new" ? lang() : b.lang || "en";
+    binderDlg.showModal(); $("bName").focus();
+  }
+  $("newBinderBtn").onclick = function () { openBinder("new"); };
+  $("settingsBtn").onclick = function () { openBinder("edit"); };
+  $("binderCancel").onclick = function () { binderDlg.close(); };
+  $("binderForm").onsubmit = function () {
+    var name = $("bName").value.trim() || "My binder", size = parseInt($("bSize").value, 10), lg = $("bLang").value;
+    if (binderMode === "new") { var nb = { id: uid(), name: name, size: size, lang: lg, cards: [] }; state.binders.push(nb); state.current = nb.id; }
+    else { var b = cur(); b.name = name; b.size = size; b.lang = lg; }
+    ui.page = 0; save(); renderPicker(); render(); resetAdd();
+  };
+  $("deleteBinder").onclick = function () {
+    var b = cur();
+    if (!confirm("Delete “" + b.name + "” and its " + b.cards.length + " cards? This can’t be undone.")) return;
+    state.binders = state.binders.filter(function (x) { return x.id !== b.id; });
+    state.current = state.binders[0].id; ui.page = 0; binderDlg.close(); save(); renderPicker(); render();
+  };
+
+  // ---------- backup ----------
+  $("exportBtn").onclick = function () {
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    var a = el("a"); a.href = URL.createObjectURL(blob); a.download = "pokemon-binder-backup.json";
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  };
+  $("importBtn").onclick = function () { $("importFile").click(); };
+  $("importFile").onchange = function (e) {
+    var f = e.target.files[0]; if (!f) return;
+    f.text().then(function (txt) {
+      var s = JSON.parse(txt);
+      if (!s || !Array.isArray(s.binders) || !s.binders.length) throw new Error("bad");
+      if (!confirm("Replace your binders with the ones in this backup?")) return;
+      state = s; if (!state.binders.some(function (b) { return b.id === state.current; })) state.current = state.binders[0].id;
+      save(); ui.page = 0; renderPicker(); render();
+    }).catch(function () { alert("That file isn’t a binder backup. Choose the .json file you downloaded with Download backup."); });
+    e.target.value = "";
+  };
+
+  // ---------- start ----------
+  state = load();
+  ui.two = mq.matches;
+  renderPicker(); render();
+})();
+</script>
+</body>
+</html>
